@@ -15,14 +15,18 @@ async function main() {
       console.log("⚠️ Prisma generate skipped (may already be generated)");
     }
 
-    // Run migrations
-    console.log("📦 Running database migrations...");
+    // Push schema to database (creates tables)
+    console.log("📦 Syncing database schema...");
     try {
-      execSync("npx prisma migrate deploy", { stdio: "inherit" });
-      console.log("✅ Migrations applied");
+      execSync("npx prisma db push --accept-data-loss", { stdio: "inherit" });
+      console.log("✅ Database schema synced");
     } catch (e) {
-      console.log("⚠️ Migrations may have failed - check DATABASE_URL");
+      console.log("⚠️ Schema push may have failed - check DATABASE_URL");
     }
+
+    // Seed database if empty (using compiled service, not ts-node)
+    const { seedDatabase } = await import("./services/seed.service");
+    await seedDatabase();
 
     // Import and start services
     const { startBot } = await import("./bot");
