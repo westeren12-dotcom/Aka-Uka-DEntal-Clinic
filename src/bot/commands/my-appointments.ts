@@ -1,74 +1,81 @@
 import { Context } from "telegraf";
-import { keyboards } from "../keyboards";
-import { patientService } from "../../services/patient.service";
 import { appointmentService } from "../../services/appointment.service";
+import { t, Language } from "../languages";
+import { mainMenu } from "../keyboards";
+
+function getLang(ctx: any): Language {
+  return ctx.session?.lang || "uz";
+}
 
 export async function myAppointments(ctx: Context) {
-  const telegramId = ctx.from?.id;
-  if (!telegramId) return;
+  try {
+    const lang = getLang(ctx);
+    const tl = t(lang);
 
-  const patient = await patientService.findByTelegramId(telegramId);
-  if (!patient) {
-    await ctx.reply("You don't have any appointments yet. Book one first!", keyboards.backToMainMenu());
-    return;
-  }
+    const user = ctx.from;
+    if (!user) return;
 
-  const [upcoming, past] = await Promise.all([
-    appointmentService.getUpcomingByPatientId(patient.id),
-    appointmentService.getPastByPatientId(patient.id),
-  ]);
+    const { prisma } = await import("../../utils/prisma");
+    const patient = await prisma.patient.findUnique({
+      where: { telegramId: BigInt(user.id) },
+    });
 
-  const statusEmoji: Record<string, string> = {
-    PENDING: "⏳",
-    CONFIRMED: "✅",
-    COMPLETED: "✔️",
-    CANCELLED: "❌",
-    NO_SHOW: "🚫",
-  };
-
-  const lines: string[] = [];
-
-  if (upcoming.length) {
-    lines.push(`<b>📅 Upcoming Appointments</b>`);
-    lines.push(``);
-    for (const a of upcoming) {
-      lines.push(
-        `${statusEmoji[a.status] || "📅"} <b>${a.service.name}</b> with ${a.doctor.name}`,
-        `   📅 ${a.date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} at ${a.time}`,
-        `   Status: ${a.status}`,
-        ``,
-      );
+    if (!patient) {
+      await ctx.reply(tl.noAppointments, mainMenu(lang));
+      return;
     }
-  }
 
-  if (past.length) {
-    lines.push(`<b>📋 Previous Appointments</b>`);
-    lines.push(``);
-    for (const a of past.slice(0, 5)) {
-      lines.push(
-        `${statusEmoji[a.status] || "📋"} <b>${a.service.name}</b> with ${a.doctor.name}`,
-        `   📅 ${a.date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} at ${a.time}`,
-        `   Status: ${a.status}`,
-        ``,
-      );
+    const appointments = await prisma.appointment.findMany({
+      where: { patientId: patient.id },
+      include: { doctor: true, service: true },
+      orderBy: { date: "desc" },
+    });
+
+    if (!appointments.length) {
+      await ctx.reply(tl.noAppointments, mainMenu(lang));
+      return;
     }
-  }
 
-  if (!upcoming.length && !past.length) {
-    lines.push("📋 You don't have any appointments yet.");
-    lines.push("");
-    lines.push("Would you like to book one?");
-  }
+    const statusMap: Record<string, string> = {
+      PENDING: tl.statusPending,
+      CONFIRMED: tl.statusConfirmed,
+      COMPLETED: tl.statusCompleted,
+      CANCELLED: tl.statusCancelled,
+      NO_SHOW: "🚫 No-show",
+    };
 
-  if (upcoming.length) {
-    const first = upcoming[0];
-    const text = lines.join("\n");
+    let text = tl.myAppointmentsTitle + "\n\n";
+    for (const apt of appointments.slice(0, 10)) {
+      const status = statusMap[apt.status] || apt.status;
+      text += tl.appointmentEntry(
+        apt.service.name,
+        apt.doctor.name,
+        apt.date.toLocaleDateString(),
+        apt.time,
+        status
+      ) + "\n\n";
+    }
+
+    const buttons: any[][] = [];
+    const upcoming = appointments.filter(
+      (a) => a.status === "PENDING" || a.status === "CONFIRMED"
+    );
+    if (upcoming.length > 0) {
+      buttons.push([
+        { text: tl.btnReschedule, callback_data: `appt_reschedule_${upcoming[0].id}` },
+        { text: tl.btnCancel, callback_data: `appt_cancel_${upcoming[0].id}` },
+      ]);
+    }
+
+    buttons.push([{ text: tl.btnBackToMenu, callback_data: "main_menu" }]);
 
     await ctx.reply(text, {
       parse_mode: "HTML",
-      ...keyboards.appointmentActions(first.id, first.status),
+      reply_markup: { inline_keyboard: buttons },
     });
-  } else {
-    await ctx.reply(lines.join("\n"), { parse_mode: "HTML", ...keyboards.mainMenu() });
+  } catch (error: any) {
+    console.error("Error showing appointments:", error.message);
+    const lang = getLang(ctx);
+    await ctx.reply(t(lang).error, mainMenu(lang));
   }
 }

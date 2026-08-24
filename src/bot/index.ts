@@ -1,10 +1,11 @@
 import { Telegraf } from "telegraf";
 import { config } from "../utils/config";
-import { sessionMiddleware, clearSession } from "./middlewares/session";
+import { sessionMiddleware, clearSession, getSession } from "./middlewares/session";
 import { notificationService } from "../services/notification.service";
+import { t, Language } from "./languages";
 
 // Commands
-import { startCommand } from "./commands/start";
+import { startCommand, showMainMenu } from "./commands/start";
 import { showServices, showPrices } from "./commands/services";
 import { showDoctors } from "./commands/doctors";
 import {
@@ -34,12 +35,13 @@ import {
   broadcastSend,
   broadcastCancel,
 } from "./commands/admin";
+import { mainMenu } from "./keyboards";
 
 const bot = new Telegraf(config.botToken);
 
 // Set bot commands for menu
 bot.telegram.setMyCommands([
-  { command: "start", description: "Start the bot" },
+  { command: "start", description: "Start / Boshlash" },
   { command: "help", description: "Show help" },
 ]);
 
@@ -64,15 +66,21 @@ async function startReminderJob() {
 // Run reminders every 15 minutes
 setInterval(startReminderJob, 15 * 60 * 1000);
 
+// Helper: get language from session
+function getLang(ctx: any): Language {
+  return ctx.session?.lang || "uz";
+}
+
 // ====== COMMAND HANDLERS ======
 
 bot.start(startCommand);
 
 bot.command("help", (ctx) => {
+  const lang = getLang(ctx);
+  const tl = t(lang);
   ctx.reply(
     `🦷 <b>${config.clinic.name}</b>\n\n` +
-      `Use the menu buttons to navigate.\n` +
-      `/start — Main menu`,
+      `${tl.btnMainMenu}: /start`,
     { parse_mode: "HTML" }
   );
 });
@@ -89,33 +97,28 @@ bot.command("broadcast", broadcastCommand);
 
 // ====== CALLBACK HANDLERS ======
 
+// Language selection
+bot.action(/^lang_(.+)$/, async (ctx) => {
+  await ctx.answerCbQuery();
+  const lang = ctx.match[1] as Language;
+  const session = (ctx as any).session || {};
+  session.lang = lang;
+  (ctx as any).session = session;
+
+  // Show welcome in selected language
+  await showMainMenu(ctx, lang);
+});
+
 // Main menu
 bot.action("main_menu", async (ctx) => {
   await ctx.answerCbQuery();
-  const text = `🦷 Welcome to <b>${config.clinic.name}</b>!\n\nYour digital dental receptionist. 👋\nHow can we help you today?`;
-  await ctx.editMessageText(text, { parse_mode: "HTML", ...mainMenuKeyboard() });
+  const lang = getLang(ctx);
+  const tl = t(lang);
+  await ctx.editMessageText(tl.welcome(config.clinic.name), {
+    parse_mode: "HTML",
+    ...mainMenu(lang),
+  });
 });
-
-function mainMenuKeyboard() {
-  return {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "📅 Book Appointment", callback_data: "book_appointment" }],
-        [
-          { text: "🦷 Services", callback_data: "show_services" },
-          { text: "💰 Prices", callback_data: "show_prices" },
-        ],
-        [{ text: "👨‍⚕️ Doctors", callback_data: "show_doctors" }],
-        [{ text: "📋 My Appointments", callback_data: "my_appointments" }],
-        [
-          { text: "📍 Location", callback_data: "show_location" },
-          { text: "📞 Contact Us", callback_data: "show_contact" },
-        ],
-        [{ text: "❓ FAQ", callback_data: "show_faq" }],
-      ],
-    },
-  };
-}
 
 // Services & Prices
 bot.action("show_services", async (ctx) => {
@@ -232,13 +235,12 @@ bot.action(/^appt_reschedule_(.+)$/, async (ctx) => {
     await ctx.reply("❌ Appointment not found.");
     return;
   }
-  // Start booking flow for reschedule
   clearSession(ctx.chat!.id);
   await startBooking(ctx);
 });
 
 // Reminder callbacks
-bot.action(/^confirm_(.+)$/, async (ctx) => {
+bot.action(/^confirm_remind_(.+)$/, async (ctx) => {
   await ctx.answerCbQuery();
   const appointmentId = ctx.match[1];
   await confirmAppointment(ctx, appointmentId);
@@ -250,7 +252,7 @@ bot.action(/^reschedule_(.+)$/, async (ctx) => {
   await startBooking(ctx);
 });
 
-bot.action(/^cancel_(.+)$/, async (ctx) => {
+bot.action(/^cancel_remind_(.+)$/, async (ctx) => {
   await ctx.answerCbQuery();
   const appointmentId = ctx.match[1];
   await cancelAppointment(ctx, appointmentId);
@@ -276,6 +278,7 @@ bot.action("no_action", async (ctx) => {
 bot.on("text", async (ctx) => {
   const session = (ctx as any).session || {};
   const text = ctx.message.text;
+  const lang = getLang(ctx);
 
   // Broadcast flow
   const broadcastHandled = await handleBroadcastMessage(ctx, text);
@@ -301,8 +304,11 @@ bot.on("text", async (ctx) => {
   }
 
   // Default: show main menu
-  const welcomeText = `🦷 Welcome to <b>${config.clinic.name}</b>!\n\nYour digital dental receptionist. 👋\nHow can we help you today?`;
-  await ctx.reply(welcomeText, { parse_mode: "HTML", ...mainMenuKeyboard() });
+  const tl = t(lang);
+  await ctx.reply(tl.welcome(config.clinic.name), {
+    parse_mode: "HTML",
+    ...mainMenu(lang),
+  });
 });
 
 // ====== ERROR HANDLING ======
@@ -310,9 +316,11 @@ bot.on("text", async (ctx) => {
 bot.catch((err: any, ctx) => {
   console.error(`Error handling ${ctx.updateType}:`, err.message || err);
   if (err.stack) console.error(err.stack);
+  const lang = getLang(ctx);
+  const tl = t(lang);
   const errorMsg = err.message?.includes("database") || err.message?.includes("table")
-    ? "❌ Database is not ready yet. Please wait a moment and try again."
-    : "❌ An unexpected error occurred. Please try again.";
+    ? tl.dbError
+    : tl.error;
   ctx.reply(errorMsg).catch(() => {});
 });
 

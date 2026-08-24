@@ -19,7 +19,8 @@ export const sessionMiddleware: MiddlewareFn<Context> = async (ctx, next) => {
 };
 
 export function clearSession(chatId: number) {
-  sessions.delete(chatId);
+  const existing = sessions.get(chatId);
+  sessions.set(chatId, { lang: existing?.lang });
 }
 
 export function getSession(chatId: number): BotSession {

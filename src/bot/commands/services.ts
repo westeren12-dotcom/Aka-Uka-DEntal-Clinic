@@ -1,38 +1,43 @@
 import { Context } from "telegraf";
-import { keyboards } from "../keyboards";
-import { serviceCatalogService } from "../../services/service.service";
+import prisma from "../../utils/prisma";
+import { config } from "../../utils/config";
+import { keyboards, backToMainMenu } from "../keyboards";
+import { t, Language } from "../languages";
+import { getSession } from "../middlewares/session";
+
+function getLang(ctx: any): Language {
+  return ctx.session?.lang || "uz";
+}
 
 export async function showServices(ctx: Context) {
-  const services = await serviceCatalogService.findActive();
+  try {
+    const lang = getLang(ctx);
+    const tl = t(lang);
 
-  if (!services.length) {
-    await ctx.reply("No services available at the moment.", keyboards.backToMainMenu());
-    return;
+    const services = await prisma.service.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+    });
+
+    if (services.length === 0) {
+      await ctx.reply("No services available.", backToMainMenu(lang));
+      return;
+    }
+
+    let text = tl.servicesTitle + "\n\n";
+    for (const s of services) {
+      const price = `💰 ${Number(s.price).toLocaleString()} UZS`;
+      text += tl.serviceEntry(s.name, s.description || "", price, s.duration) + "\n\n";
+    }
+
+    await ctx.reply(text, { parse_mode: "HTML", ...backToMainMenu(lang) });
+  } catch (error: any) {
+    console.error("Error showing services:", error.message);
+    const lang = getLang(ctx);
+    await ctx.reply(t(lang).error, backToMainMenu(lang));
   }
-
-  const lines = services.map(
-    (s, i) =>
-      `${i + 1}. 🦷 <b>${s.name}</b>\n   ${s.description || "No description"}\n   ⏱ ${s.duration} min`
-  );
-
-  const text = [`🦷 <b>Our Services</b>`, ``, ...lines].join("\n");
-
-  await ctx.reply(text, { parse_mode: "HTML", ...keyboards.backToMainMenu() });
 }
 
 export async function showPrices(ctx: Context) {
-  const services = await serviceCatalogService.findActive();
-
-  if (!services.length) {
-    await ctx.reply("No pricing information available.", keyboards.backToMainMenu());
-    return;
-  }
-
-  const lines = services.map(
-    (s, i) => `${i + 1}. 🦷 <b>${s.name}</b> — ${s.price.toString()} UZS — ⏱ ${s.duration} min`
-  );
-
-  const text = [`💰 <b>Our Prices</b>`, ``, ...lines, ``, `All prices are in Uzbekistani Sum (UZS)`].join("\n");
-
-  await ctx.reply(text, { parse_mode: "HTML", ...keyboards.backToMainMenu() });
+  await showServices(ctx); // Same content, prices included
 }

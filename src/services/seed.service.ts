@@ -128,9 +128,9 @@ export async function seedDatabase(): Promise<void> {
     const doctors = await Promise.all([
       prisma.doctor.create({
         data: {
-          name: "Dr. Azizov",
-          specialty: "General Dentist",
-          description: "Experienced general dentist with 10+ years of practice",
+          name: "Dr. Musobek",
+          specialty: "Chief Dentist",
+          description: "Chief dentist and founder with 15+ years of experience",
           workingDays: "Mon,Tue,Wed,Thu,Fri",
           workingHoursStart: "09:00",
           workingHoursEnd: "17:00",

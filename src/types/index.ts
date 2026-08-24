@@ -1,7 +1,10 @@
 import { AppointmentStatus, PaymentStatus, UserRole } from "@prisma/client";
 
+import { Language } from "../bot/languages";
+
 export interface BotSession {
   step?: string;
+  lang?: Language;
   serviceId?: string;
   doctorId?: string;
   date?: string;

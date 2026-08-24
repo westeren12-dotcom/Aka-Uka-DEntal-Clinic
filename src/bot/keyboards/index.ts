@@ -1,83 +1,52 @@
-import { Markup } from "telegraf";
-import { InlineKeyboardButton } from "telegraf/types";
+import { Language, t } from "../languages";
 
-function backToMainMenu() {
-  return Markup.inlineKeyboard([
-    [Markup.button.callback("🏠 Main Menu", "main_menu")],
-  ]);
+export function mainMenu(lang: Language = "uz") {
+  const tl = t(lang);
+  return {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: tl.btnBookAppointment, callback_data: "book_appointment" }],
+        [
+          { text: tl.btnServices, callback_data: "show_services" },
+          { text: tl.btnPrices, callback_data: "show_prices" },
+        ],
+        [{ text: tl.btnDoctors, callback_data: "show_doctors" }],
+        [{ text: tl.btnMyAppointments, callback_data: "my_appointments" }],
+        [
+          { text: tl.btnLocation, callback_data: "show_location" },
+          { text: tl.btnContact, callback_data: "show_contact" },
+        ],
+        [{ text: tl.btnFaq, callback_data: "show_faq" }],
+      ],
+    },
+  };
 }
 
-function mainMenu() {
-  return Markup.inlineKeyboard([
-    [Markup.button.callback("📅 Book Appointment", "book_appointment")],
-    [Markup.button.callback("🦷 Services", "show_services"), Markup.button.callback("💰 Prices", "show_prices")],
-    [Markup.button.callback("👨‍⚕️ Doctors", "show_doctors")],
-    [Markup.button.callback("📋 My Appointments", "my_appointments")],
-    [Markup.button.callback("📍 Location", "show_location"), Markup.button.callback("📞 Contact Us", "show_contact")],
-    [Markup.button.callback("❓ FAQ", "show_faq")],
-  ]);
+export function backButton(lang: Language = "uz") {
+  const tl = t(lang);
+  return {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: tl.btnBack, callback_data: "main_menu" }],
+      ],
+    },
+  };
 }
 
-function backButton(target = "main_menu") {
-  return Markup.inlineKeyboard([[Markup.button.callback("⬅️ Back", target)]]);
+export function backToMainMenu(lang: Language = "uz") {
+  const tl = t(lang);
+  return {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: tl.btnBackToMenu, callback_data: "main_menu" }],
+      ],
+    },
+  };
 }
 
-function confirmBooking(summary: { appointmentId: string }) {
-  return Markup.inlineKeyboard([
-    [
-      Markup.button.callback("✅ Confirm", `confirm_booking_${summary.appointmentId}`),
-      Markup.button.callback("🔄 Change", `book_appointment`),
-    ],
-    [Markup.button.callback("❌ Cancel", `main_menu`)],
-  ]);
-}
-
-function confirmAction(action: string, id: string) {
-  return Markup.inlineKeyboard([
-    [
-      Markup.button.callback("✅ Yes", `${action}_yes_${id}`),
-      Markup.button.callback("❌ No", `${action}_no_${id}`),
-    ],
-  ]);
-}
-
-function appointmentActions(appointmentId: string, status: string) {
-  const buttons: InlineKeyboardButton[][] = [];
-
-  if (status === "PENDING" || status === "CONFIRMED") {
-    buttons.push([
-      Markup.button.callback("✅ Confirm", `appt_confirm_${appointmentId}`),
-      Markup.button.callback("❌ Cancel", `appt_cancel_${appointmentId}`),
-    ]);
-    buttons.push([
-      Markup.button.callback("🔄 Reschedule", `appt_reschedule_${appointmentId}`),
-    ]);
-  }
-
-  buttons.push([Markup.button.callback("⬅️ Back", "my_appointments")]);
-  return Markup.inlineKeyboard(buttons);
-}
-
-function yesNoPrompt(action: string, id: string) {
-  return Markup.inlineKeyboard([
-    [
-      Markup.button.callback("✅ Yes", `${action}_yes_${id}`),
-      Markup.button.callback("❌ No", `no_action`),
-    ],
-  ]);
-}
-
-function inlineKeyboard(keyboards: InlineKeyboardButton[][]) {
-  return Markup.inlineKeyboard(keyboards);
-}
-
+// Keep old export for backward compatibility
 export const keyboards = {
   mainMenu,
-  backToMainMenu,
   backButton,
-  confirmBooking,
-  confirmAction,
-  appointmentActions,
-  yesNoPrompt,
-  inlineKeyboard,
+  backToMainMenu,
 };
