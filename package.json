@@ -11,6 +11,7 @@
     "build:bot": "tsc -p tsconfig.json",
     "build:admin": "cd admin && npm run build",
     "build": "npm run build:bot && npm run build:admin",
+    "postinstall": "cd admin && npm install",
     "start": "node dist/bot/index.js",
     "start:api": "node dist/api/index.js",
     "prisma:generate": "prisma generate",
