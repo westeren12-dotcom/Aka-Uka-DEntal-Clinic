@@ -7,12 +7,17 @@ export async function startCommand(ctx: Context) {
   const user = ctx.from;
   if (!user) return;
 
-  await patientService.findOrCreateByTelegram(
-    user.id,
-    user.first_name,
-    user.last_name,
-    user.username
-  );
+  try {
+    await patientService.findOrCreateByTelegram(
+      user.id,
+      user.first_name,
+      user.last_name,
+      user.username
+    );
+  } catch (err: any) {
+    console.error("Error creating patient:", err.message);
+    // Continue even if patient creation fails
+  }
 
   const text = [
     `🦷 Welcome to <b>${config.clinic.name}</b>!`,

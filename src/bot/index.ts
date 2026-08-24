@@ -307,9 +307,13 @@ bot.on("text", async (ctx) => {
 
 // ====== ERROR HANDLING ======
 
-bot.catch((err, ctx) => {
-  console.error(`Error handling ${ctx.updateType}:`, err);
-  ctx.reply("❌ An unexpected error occurred. Please try again.").catch(() => {});
+bot.catch((err: any, ctx) => {
+  console.error(`Error handling ${ctx.updateType}:`, err.message || err);
+  if (err.stack) console.error(err.stack);
+  const errorMsg = err.message?.includes("database") || err.message?.includes("table")
+    ? "❌ Database is not ready yet. Please wait a moment and try again."
+    : "❌ An unexpected error occurred. Please try again.";
+  ctx.reply(errorMsg).catch(() => {});
 });
 
 // ====== START BOT ======
