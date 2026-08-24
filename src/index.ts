@@ -1,55 +1,76 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-async function main() {
-  console.log("🦷 Starting Dental Clinic System...");
+import { execSync } from "child_process";
 
+const DATABASE_URL = process.env.DATABASE_URL;
+
+function run(cmd: string, env?: Record<string, string>): boolean {
   try {
-    // Run prisma generate first
-    console.log("📦 Generating Prisma client...");
-    const { execSync } = require("child_process");
-    try {
-      execSync("npx prisma generate", { stdio: "inherit" });
-      console.log("✅ Prisma client generated");
-    } catch (e) {
-      console.log("⚠️ Prisma generate skipped (may already be generated)");
-    }
-
-    // Push schema to database (creates tables)
-    console.log("📦 Syncing database schema...");
-    try {
-      execSync("npx prisma db push --accept-data-loss", { stdio: "inherit" });
-      console.log("✅ Database schema synced");
-    } catch (e) {
-      console.log("⚠️ Schema push may have failed - check DATABASE_URL");
-    }
-
-    // Seed database if empty (using compiled service, not ts-node)
-    const { seedDatabase } = await import("./services/seed.service");
-    await seedDatabase();
-
-    // Import and start services
-    const { startBot } = await import("./bot");
-    const { startApi } = await import("./api");
-
-    startApi();
-    await startBot();
-
-    console.log("✅ All systems are running!");
-  } catch (error: any) {
-    console.error("❌ Failed to start:", error.message || error);
-    
-    // Don't exit if it's a database connection issue - log and keep trying
-    if (error.message?.includes("Can't reach database")) {
-      console.error("💡 DATABASE_URL may not be set or is incorrect");
-      console.error("💡 Set DATABASE_URL in Railway Variables tab");
-    }
-    
-    // For other critical errors, exit
-    if (!error.message?.includes("database")) {
-      process.exit(1);
-    }
+    execSync(cmd, {
+      stdio: "inherit",
+      env: { ...process.env, ...env },
+    });
+    return true;
+  } catch {
+    return false;
   }
 }
 
-main();
+async function main() {
+  console.log("🦷 Starting Dental Clinic System...");
+  console.log("🔗 DATABASE_URL:", DATABASE_URL ? "SET" : "NOT SET");
+
+  if (!DATABASE_URL) {
+    console.error("❌ DATABASE_URL is not set!");
+    process.exit(1);
+  }
+
+  // Step 1: Generate Prisma client
+  console.log("\n📦 [1/3] Generating Prisma client...");
+  if (!run("npx prisma generate")) {
+    console.error("❌ Prisma generate failed");
+    process.exit(1);
+  }
+  console.log("✅ Prisma client generated");
+
+  // Step 2: Push schema to database
+  console.log("\n📦 [2/3] Creating database tables...");
+  if (!run("npx prisma db push --accept-data-loss")) {
+    console.error("❌ Schema push failed");
+    process.exit(1);
+  }
+  console.log("✅ Database tables ready");
+
+  // Step 3: Seed database
+  console.log("\n🌱 [3/3] Seeding database...");
+  const { PrismaClient } = require("@prisma/client");
+  const prisma = new PrismaClient();
+  try {
+    const adminCount = await prisma.admin.count();
+    if (adminCount === 0) {
+      const { seedDatabase } = await import("./services/seed.service");
+      await seedDatabase();
+    } else {
+      console.log("✅ Database already has data, skipping seed");
+    }
+  } catch (err: any) {
+    console.error("⚠️ Seed check error:", err.message);
+  }
+  await prisma.$disconnect();
+
+  // Step 4: Start services
+  console.log("\n🚀 Starting services...");
+  const { startBot } = await import("./bot");
+  const { startApi } = await import("./api");
+
+  startApi();
+  await startBot();
+
+  console.log("\n✅ All systems are running!");
+}
+
+main().catch((err) => {
+  console.error("❌ Fatal error:", err);
+  process.exit(1);
+});
