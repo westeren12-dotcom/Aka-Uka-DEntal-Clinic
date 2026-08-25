@@ -1,10 +1,85 @@
 import prisma from "../utils/prisma";
 
+// Service name mapping: English → Uzbek (for updating existing data)
+const SERVICE_NAME_MAP: Record<string, { uz: string; ru: string; descUz: string; descRu: string }> = {
+  "Dental Cleaning": { uz: "Tish tozalash", ru: "Чистка зубов", descUz: "Tishlarni professional tozalash va parlatish", descRu: "Профессиональная чистка и полировка зубов" },
+  "Dental Treatment": { uz: "Tish davolash", ru: "Лечение зубов", descUz: "Umumiy tish davolash va plomba qo'yish", descRu: "Общее лечение зубов и пломбирование" },
+  "Teeth Whitening": { uz: "Tish oqartirish", ru: "Отбеливание зубов", descUz: "Professional tish oqartirish protsedurasi", descRu: "Профессиональное отбеливание зубов" },
+  "Dental Implant": { uz: "Tish implantatsiya", ru: "Зубной имплант", descUz: "Tish implantatsiyasi o'rnatish", descRu: "Установка зубного импланта" },
+  "Braces": { uz: "Brekеты", ru: "Брекеты", descUz: "Ortodontik breketlar o'rnatish", descRu: "Установка ортодонтических брекетов" },
+  "Crown": { uz: "Tish toji", ru: "Коронка", descUz: "Tish toji o'rnatish", descRu: "Установка зубной коронки" },
+  "Consultation": { uz: "Konsultatsiya", ru: "Консультация", descUz: "Umumiy stomatologik konsultatsiya", descRu: "Общая стоматологическая консультация" },
+  "X-Ray / Diagnostics": { uz: "Rentgen / Diagnostika", ru: "Рентген / Диагностика", descUz: "Tish rentgeni va diagnostik tekshiruv", descRu: "Рентген зубов и диагностическая съемка" },
+};
+
+// Doctor name mapping: English → Uzbek
+const DOCTOR_NAME_MAP: Record<string, { uz: string; ru: string; specUz: string; specRu: string; descUz: string; descRu: string }> = {
+  "Dr. Musobek": { uz: "Dr. Musobek", ru: "Др. Мусобек", specUz: "Bosh stomatolog", specRu: "Главный стоматолог", descUz: "Bosh stomatolog va asoschi, 15+ yillik tajriba", descRu: "Главный стоматолог и основатель, опыт более 15 лет" },
+  "Dr. Karimova": { uz: "Dr. Karimova", ru: "Др. Каримова", specUz: "Ortodont", specRu: "Ортодонт", descUz: "Brekетlar va tish tekislash bo'yicha mutaxassis", descRu: "Специалист по брекетам и выравниванию зубов" },
+  "Dr. Toshmatov": { uz: "Dr. Toshmatov", ru: "Др. Ташматов", specUz: "Stomatolog-xirurg", specRu: "Хирург-стоматолог", descUz: "Tish implantatsiyasi va og'iz xirurgiyasi bo'yicha ekspert", descRu: "Эксперт по зубным имплантам и полостной хирургии" },
+  "Dr. Nishonova": { uz: "Dr. Nishonova", ru: "Др. Нишонова", specUz: "Bolalar stomatologi", specRu: "Детский стоматолог", descUz: "Bolalar tish salomatligiga g'amxo'rlik", descRu: "Бережный уход за зубами детей" },
+};
+
+/**
+ * Update existing English-named services/doctors to Uzbek
+ */
+export async function updateExistingDataToUzbek(): Promise<void> {
+  console.log("🔄 Checking for English data to update to Uzbek...");
+
+  let updatedServices = 0;
+  let updatedDoctors = 0;
+
+  // Update services with English names to Uzbek
+  for (const [engName, data] of Object.entries(SERVICE_NAME_MAP)) {
+    try {
+      const result = await prisma.service.updateMany({
+        where: { name: engName },
+        data: { name: data.uz, nameRu: data.ru, description: data.descUz, descriptionRu: data.descRu },
+      });
+      if (result.count > 0) {
+        updatedServices += result.count;
+        console.log(`  ✅ Updated service: ${engName} → ${data.uz}`);
+      }
+    } catch (e) { /* skip */ }
+  }
+
+  // Also check for any service with English-only names (no nameRu)
+  const servicesWithoutRu = await prisma.service.findMany({ where: { nameRu: null } });
+  for (const s of servicesWithoutRu) {
+    const mapping = Object.values(SERVICE_NAME_MAP).find(m => m.uz === s.name || m.ru === s.name);
+    if (mapping) {
+      await prisma.service.update({ where: { id: s.id }, data: { nameRu: mapping.ru, descriptionRu: mapping.descRu } });
+      updatedServices++;
+    }
+  }
+
+  // Update doctors with English names to Uzbek
+  for (const [engName, data] of Object.entries(DOCTOR_NAME_MAP)) {
+    try {
+      const result = await prisma.doctor.updateMany({
+        where: { name: engName },
+        data: { nameRu: data.ru, specialty: data.specUz, specialtyRu: data.specRu, description: data.descUz, descriptionRu: data.descRu },
+      });
+      if (result.count > 0) {
+        updatedDoctors += result.count;
+        console.log(`  ✅ Updated doctor: ${engName} → ${data.uz}`);
+      }
+    } catch (e) { /* skip */ }
+  }
+
+  if (updatedServices > 0 || updatedDoctors > 0) {
+    console.log(`✅ Updated ${updatedServices} services and ${updatedDoctors} doctors to Uzbek`);
+  } else {
+    console.log("✅ All data already in Uzbek");
+  }
+}
+
 export async function seedDatabase(): Promise<void> {
   try {
     const adminCount = await prisma.admin.count();
     if (adminCount > 0) {
-      console.log("✅ Database already seeded");
+      console.log("✅ Database already seeded, checking for Uzbek updates...");
+      await updateExistingDataToUzbek();
       return;
     }
 
@@ -47,13 +122,13 @@ export async function seedDatabase(): Promise<void> {
     });
     console.log("✅ Created 3 default admins (password: admin123)");
 
-    // Create bilingual services
+    // Create bilingual services (Uzbek primary, Russian secondary)
     const services = await Promise.all([
       prisma.service.create({
         data: {
-          name: "Dental Cleaning",
+          name: "Tish tozalash",
           nameRu: "Чистка зубов",
-          description: "Professional teeth cleaning and polishing",
+          description: "Tishlarni professional tozalash va parlatish",
           descriptionRu: "Профессиональная чистка и полировка зубов",
           price: 150000,
           duration: 30,
@@ -62,9 +137,9 @@ export async function seedDatabase(): Promise<void> {
       }),
       prisma.service.create({
         data: {
-          name: "Dental Treatment",
+          name: "Tish davolash",
           nameRu: "Лечение зубов",
-          description: "General dental treatment and fillings",
+          description: "Umumiy tish davolash va plomba qo'yish",
           descriptionRu: "Общее лечение зубов и пломбирование",
           price: 300000,
           duration: 45,
@@ -73,9 +148,9 @@ export async function seedDatabase(): Promise<void> {
       }),
       prisma.service.create({
         data: {
-          name: "Teeth Whitening",
+          name: "Tish oqartirish",
           nameRu: "Отбеливание зубов",
-          description: "Professional teeth whitening procedure",
+          description: "Professional tish oqartirish protsedurasi",
           descriptionRu: "Профессиональное отбеливание зубов",
           price: 500000,
           duration: 60,
@@ -84,9 +159,9 @@ export async function seedDatabase(): Promise<void> {
       }),
       prisma.service.create({
         data: {
-          name: "Dental Implant",
+          name: "Tish implantatsiya",
           nameRu: "Зубной имплант",
-          description: "Dental implant installation",
+          description: "Tish implantatsiyasi o'rnatish",
           descriptionRu: "Установка зубного импланта",
           price: 2000000,
           duration: 120,
@@ -95,9 +170,9 @@ export async function seedDatabase(): Promise<void> {
       }),
       prisma.service.create({
         data: {
-          name: "Braces",
+          name: "Brekеты",
           nameRu: "Брекеты",
-          description: "Orthodontic braces installation",
+          description: "Ortodontik breketlar o'rnatish",
           descriptionRu: "Установка ортодонтических брекетов",
           price: 3000000,
           duration: 60,
@@ -106,9 +181,9 @@ export async function seedDatabase(): Promise<void> {
       }),
       prisma.service.create({
         data: {
-          name: "Crown",
+          name: "Tish toji",
           nameRu: "Коронка",
-          description: "Dental crown installation",
+          description: "Tish toji o'rnatish",
           descriptionRu: "Установка зубной коронки",
           price: 800000,
           duration: 90,
@@ -117,9 +192,9 @@ export async function seedDatabase(): Promise<void> {
       }),
       prisma.service.create({
         data: {
-          name: "Consultation",
+          name: "Konsultatsiya",
           nameRu: "Консультация",
-          description: "General dental consultation",
+          description: "Umumiy stomatologik konsultatsiya",
           descriptionRu: "Общая стоматологическая консультация",
           price: 50000,
           duration: 20,
@@ -128,9 +203,9 @@ export async function seedDatabase(): Promise<void> {
       }),
       prisma.service.create({
         data: {
-          name: "X-Ray / Diagnostics",
+          name: "Rentgen / Diagnostika",
           nameRu: "Рентген / Диагностика",
-          description: "Dental X-ray and diagnostic imaging",
+          description: "Tish rentgeni va diagnostik tekshiruv",
           descriptionRu: "Рентген зубов и диагностическая съемка",
           price: 100000,
           duration: 15,
@@ -138,17 +213,17 @@ export async function seedDatabase(): Promise<void> {
         },
       }),
     ]);
-    console.log(`✅ Created ${services.length} bilingual services`);
+    console.log(`✅ Created ${services.length} bilingual services (Uzbek + Russian)`);
 
-    // Create bilingual doctors
+    // Create bilingual doctors (Uzbek primary, Russian secondary)
     const doctors = await Promise.all([
       prisma.doctor.create({
         data: {
           name: "Dr. Musobek",
           nameRu: "Др. Мусобек",
-          specialty: "Chief Dentist",
+          specialty: "Bosh stomatolog",
           specialtyRu: "Главный стоматолог",
-          description: "Chief dentist and founder with 15+ years of experience",
+          description: "Bosh stomatolog va asoschi, 15+ yillik tajriba",
           descriptionRu: "Главный стоматолог и основатель, опыт более 15 лет",
           workingDays: "Mon,Tue,Wed,Thu,Fri",
           workingHoursStart: "09:00",
@@ -160,9 +235,9 @@ export async function seedDatabase(): Promise<void> {
         data: {
           name: "Dr. Karimova",
           nameRu: "Др. Каримова",
-          specialty: "Orthodontist",
+          specialty: "Ortodont",
           specialtyRu: "Ортодонт",
-          description: "Specialist in braces and teeth alignment",
+          description: "Brekетlar va tish tekislash bo'yicha mutaxassis",
           descriptionRu: "Специалист по брекетам и выравниванию зубов",
           workingDays: "Mon,Wed,Fri",
           workingHoursStart: "10:00",
@@ -174,9 +249,9 @@ export async function seedDatabase(): Promise<void> {
         data: {
           name: "Dr. Toshmatov",
           nameRu: "Др. Ташматов",
-          specialty: "Oral Surgeon",
+          specialty: "Stomatolog-xirurg",
           specialtyRu: "Хирург-стоматолог",
-          description: "Expert in dental implants and oral surgery",
+          description: "Tish implantatsiyasi va og'iz xirurgiyasi bo'yicha ekspert",
           descriptionRu: "Эксперт по зубным имплантам и полостной хирургии",
           workingDays: "Tue,Thu,Sat",
           workingHoursStart: "09:00",
@@ -188,9 +263,9 @@ export async function seedDatabase(): Promise<void> {
         data: {
           name: "Dr. Nishonova",
           nameRu: "Др. Нишонова",
-          specialty: "Pediatric Dentist",
+          specialty: "Bolalar stomatologi",
           specialtyRu: "Детский стоматолог",
-          description: "Gentle care for children's dental health",
+          description: "Bolalar tish salomatligiga g'amxo'rlik",
           descriptionRu: "Бережный уход за зубами детей",
           workingDays: "Mon,Tue,Wed,Thu,Fri",
           workingHoursStart: "09:00",
@@ -199,7 +274,7 @@ export async function seedDatabase(): Promise<void> {
         },
       }),
     ]);
-    console.log(`✅ Created ${doctors.length} bilingual doctors`);
+    console.log(`✅ Created ${doctors.length} bilingual doctors (Uzbek + Russian)`);
 
     // Assign services to doctors
     const allServiceIds = services.map((s) => s.id);
@@ -218,11 +293,11 @@ export async function seedDatabase(): Promise<void> {
 
     // Create clinic settings
     const settings = [
-      { key: "clinic_name", value: "Aka-Uka Dental Clinic" },
+      { key: "clinic_name", value: "Aka-Uka Stomatologiya Klinikasi" },
       { key: "clinic_phone", value: "+998901234567" },
-      { key: "clinic_address", value: "Tashkent, Amir Temur street 15" },
+      { key: "clinic_address", value: "Toshkent, Amir Temur ko'chasi 15" },
       { key: "clinic_google_maps", value: "https://maps.google.com/?q=41.3111,69.2797" },
-      { key: "clinic_working_hours", value: "Mon-Sat: 09:00 - 18:00" },
+      { key: "clinic_working_hours", value: "Dush-Shan: 09:00 - 18:00" },
     ];
     await prisma.clinicSettings.createMany({ data: settings });
     console.log("✅ Created clinic settings");
@@ -230,8 +305,8 @@ export async function seedDatabase(): Promise<void> {
     // Create bilingual FAQs
     const faqs = [
       {
-        question: "What are your working hours?",
-        answer: "We are open Monday to Saturday, from 09:00 to 18:00. We are closed on Sundays.",
+        question: "Ish vaqtlaringiz qanday?",
+        answer: "Biz Dushanbadan Shanbagacha, 09:00 dan 18:00 gacha ishlaymiz. Yakshanba kuni dam olish.",
         category: "general",
       },
       {
@@ -240,8 +315,8 @@ export async function seedDatabase(): Promise<void> {
         category: "general",
       },
       {
-        question: "How can I book an appointment?",
-        answer: "You can book an appointment directly through this Telegram bot! Just click '📅 Book Appointment'.",
+        question: "Qanday qilib uchrashuv belgilashim mumkin?",
+        answer: "Siz ushbu Telegram boti orqali to'g'ridan-to'g'ri uchrashuv belgilashingiz mumkin! '📅 Uchrashuv belgilash' tugmasini bosing.",
         category: "booking",
       },
       {
@@ -250,8 +325,8 @@ export async function seedDatabase(): Promise<void> {
         category: "booking",
       },
       {
-        question: "What payment methods do you accept?",
-        answer: "We accept cash, bank transfers, and card payments. All prices are listed in the Services section.",
+        question: "Qanday to'lov usullarini qabul qilasizlar?",
+        answer: "Biz naqd pul, bank o'tkazmalari va karta to'lovlarini qabul qilamiz. Barcha narxlar Xizmatlar bo'limida ko'rsatilgan.",
         category: "payment",
       },
       {
@@ -260,8 +335,8 @@ export async function seedDatabase(): Promise<void> {
         category: "payment",
       },
       {
-        question: "Can I cancel or reschedule my appointment?",
-        answer: "Yes! Go to '📋 My Appointments' in the bot menu to reschedule or cancel.",
+        question: "Uchrashuvimni bekor qila yoki o'zgartira olamanmi?",
+        answer: "Ha! Bot menyusidagi '📋 Mening uchrashuvlarim' bo'limiga o'ting.",
         category: "booking",
       },
       {
