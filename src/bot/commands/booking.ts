@@ -39,7 +39,7 @@ export async function startBooking(ctx: Context) {
   (ctx as any).session = session;
 
   const buttons = services.map((s) => [
-    { text: `🦷 ${s.name} — ${Number(s.price).toLocaleString()} UZS`, callback_data: `svc_${s.id}` },
+    { text: `🦷 ${s.nameRu ? s.name + ' / ' + s.nameRu : s.name} — ${Number(s.price).toLocaleString()} UZS`, callback_data: `svc_${s.id}` },
   ]);
   buttons.push([{ text: tl.btnBack, callback_data: "main_menu" }]);
 
@@ -66,7 +66,7 @@ export async function selectService(ctx: Context, serviceId: string) {
   }
 
   const buttons = doctors.map((d) => [
-    { text: `👨‍⚕️ ${d.name} (${d.specialty})`, callback_data: `doc_${d.id}` },
+    { text: `👨‍⚕️ ${d.nameRu ? d.name + ' / ' + d.nameRu : d.name} (${d.specialtyRu ? d.specialty + ' / ' + d.specialtyRu : d.specialty})`, callback_data: `doc_${d.id}` },
   ]);
   buttons.push([{ text: tl.btnBack, callback_data: "book_appointment" }]);
 
@@ -202,14 +202,16 @@ export async function enterPhone(ctx: Context, phone: string) {
   const service = await serviceCatalogService.findById(session.serviceId!);
   const doctor = await doctorService.findById(session.doctorId!);
 
+  const serviceName = service?.nameRu ? `${service?.name} / ${service.nameRu}` : service?.name || "";
+  const doctorName = (doctor as any)?.nameRu ? `${doctor?.name} / ${(doctor as any).nameRu}` : doctor?.name || "";
   const summary = [
     tl.appointmentSummary,
     "",
     `${tl.patient}: ${session.name}`,
-    `${tl.phone || "📞"}: ${session.phone}`,
-    `${tl.service}: ${service?.name}`,
+    `📞: ${session.phone}`,
+    `${tl.service}: ${serviceName}`,
     `${tl.price}: ${Number(service?.price || 0).toLocaleString()} UZS`,
-    `${tl.doctor}: ${doctor?.name}`,
+    `${tl.doctor}: ${doctorName}`,
     `${tl.date}: ${session.date}`,
     `${tl.time}: ${session.time}`,
   ].join("\n");
@@ -269,13 +271,15 @@ export async function confirmAppointment(ctx: Context, appointmentId: string) {
 
     await notificationService.sendAppointmentConfirmation(appointment as any);
 
+    const aptDoctorName = (appointment.doctor as any).nameRu ? `${appointment.doctor.name} / ${(appointment.doctor as any).nameRu}` : appointment.doctor.name;
+    const aptServiceName = (appointment.service as any).nameRu ? `${appointment.service.name} / ${(appointment.service as any).nameRu}` : appointment.service.name;
     const text = [
       `✅ <b>${tl.confirmed}</b>`,
       "",
       `📅 ${appointment.date.toLocaleDateString()}`,
       `🕐 ${appointment.time}`,
-      `👨‍⚕️ ${appointment.doctor.name}`,
-      `🦷 ${appointment.service.name}`,
+      `👨‍⚕️ ${aptDoctorName}`,
+      `🦷 ${aptServiceName}`,
     ].join("\n");
 
     await ctx.reply(text, { parse_mode: "HTML", ...(await import("../keyboards")).mainMenu(lang) });

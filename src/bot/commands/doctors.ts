@@ -7,19 +7,21 @@ function getLang(ctx: any): Language {
   return ctx.session?.lang || "uz";
 }
 
-function docName(d: any, lang: Language): string {
-  if (lang === "ru" && d.nameRu) return d.nameRu;
+function docName(d: any, _lang: Language): string {
+  if (d.nameRu) return `${d.name} / ${d.nameRu}`;
   return d.name;
 }
 
-function docSpec(d: any, lang: Language): string {
-  if (lang === "ru" && d.specialtyRu) return d.specialtyRu;
+function docSpec(d: any, _lang: Language): string {
+  if (d.specialtyRu) return `${d.specialty} / ${d.specialtyRu}`;
   return d.specialty;
 }
 
-function docDesc(d: any, lang: Language): string {
-  if (lang === "ru" && d.descriptionRu) return d.descriptionRu;
-  return d.description || "";
+function docDesc(d: any, _lang: Language): string {
+  if (d.descriptionRu && d.description) return `${d.description}\n🌐 ${d.descriptionRu}`;
+  if (d.description) return d.description;
+  if (d.descriptionRu) return d.descriptionRu;
+  return "";
 }
 
 const daysUz: Record<string, string> = { Mon: "Dush", Tue: "Sesh", Wed: "Chor", Thu: "Pay", Fri: "Jum", Sat: "Shan", Sun: "Yak" };
@@ -43,8 +45,8 @@ export async function showDoctors(ctx: Context) {
     let text = tl.doctorsTitle + "\n\n";
     for (const d of doctors) {
       const serviceNames = d.services.map((ds) =>
-        lang === "ru" && ds.service.nameRu ? ds.service.nameRu : ds.service.name
-      ).join(", ");
+        ds.service.nameRu ? `${ds.service.name} / ${ds.service.nameRu}` : ds.service.name
+      ).join("\n");
       const dayMap = lang === "ru" ? daysRu : daysUz;
       const workingDays = d.workingDays
         .split(",")
@@ -53,7 +55,7 @@ export async function showDoctors(ctx: Context) {
       const hours = `${d.workingHoursStart} - ${d.workingHoursEnd}`;
 
       text += tl.doctorEntry(docName(d, lang), docSpec(d, lang), docDesc(d, lang), workingDays, hours) + "\n";
-      text += `📋 ${tl.doctorServices} ${serviceNames}\n\n`;
+      text += `📋 ${tl.doctorServices}:\n${serviceNames}\n\n`;
     }
 
     await ctx.reply(text, { parse_mode: "HTML", ...backToMainMenu(lang) });

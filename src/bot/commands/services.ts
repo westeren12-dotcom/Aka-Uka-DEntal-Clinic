@@ -7,14 +7,18 @@ function getLang(ctx: any): Language {
   return ctx.session?.lang || "uz";
 }
 
-function svcName(s: any, lang: Language): string {
-  if (lang === "ru" && s.nameRu) return s.nameRu;
+function svcName(s: any, _lang: Language): string {
+  // Always show both languages
+  if (s.nameRu) return `${s.name} / ${s.nameRu}`;
   return s.name;
 }
 
-function svcDesc(s: any, lang: Language): string {
-  if (lang === "ru" && s.descriptionRu) return s.descriptionRu;
-  return s.description || "";
+function svcDesc(s: any, _lang: Language): string {
+  // Always show both languages
+  if (s.descriptionRu && s.description) return `${s.description}\n🌐 ${s.descriptionRu}`;
+  if (s.description) return s.description;
+  if (s.descriptionRu) return s.descriptionRu;
+  return "";
 }
 
 export async function showServices(ctx: Context) {
@@ -34,7 +38,7 @@ export async function showServices(ctx: Context) {
 
     let text = tl.servicesTitle + "\n\n";
     for (const s of services) {
-      const price = `💰 ${Number(s.price).toLocaleString()} UZS`;
+      const price = `${Number(s.price).toLocaleString()} UZS`;
       text += tl.serviceEntry(svcName(s, lang), svcDesc(s, lang), price, s.duration) + "\n\n";
     }
 
