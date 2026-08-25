@@ -55,8 +55,8 @@ notificationService.setBot(bot.telegram);
 async function startReminderJob() {
   try {
     const result = await notificationService.checkAndSendReminders();
-    if (result.reminders24h > 0 || result.reminders2h > 0) {
-      console.log(`Sent reminders: ${result.reminders24h} (24h), ${result.reminders2h} (2h)`);
+    if (result.reminders2h > 0 || result.reminders1h > 0 || result.reminders30m > 0 || result.reminders10m > 0 || result.lateCancelled > 0) {
+      console.log(`Reminders sent: 2h=${result.reminders2h}, 1h=${result.reminders1h}, 30m=${result.reminders30m}, 10m=${result.reminders10m}, late cancelled=${result.lateCancelled}`);
     }
   } catch (error) {
     console.error("Reminder job error:", error);

@@ -2,11 +2,28 @@ import { Context } from "telegraf";
 import prisma from "../../utils/prisma";
 import { backToMainMenu } from "../keyboards";
 import { t, Language } from "../languages";
-import { getSession } from "../middlewares/session";
 
 function getLang(ctx: any): Language {
   return ctx.session?.lang || "uz";
 }
+
+function docName(d: any, lang: Language): string {
+  if (lang === "ru" && d.nameRu) return d.nameRu;
+  return d.name;
+}
+
+function docSpec(d: any, lang: Language): string {
+  if (lang === "ru" && d.specialtyRu) return d.specialtyRu;
+  return d.specialty;
+}
+
+function docDesc(d: any, lang: Language): string {
+  if (lang === "ru" && d.descriptionRu) return d.descriptionRu;
+  return d.description || "";
+}
+
+const daysUz: Record<string, string> = { Mon: "Dush", Tue: "Sesh", Wed: "Chor", Thu: "Pay", Fri: "Jum", Sat: "Shan", Sun: "Yak" };
+const daysRu: Record<string, string> = { Mon: "Пн", Tue: "Вт", Wed: "Ср", Thu: "Чт", Fri: "Пт", Sat: "Сб", Sun: "Вс" };
 
 export async function showDoctors(ctx: Context) {
   try {
@@ -18,26 +35,24 @@ export async function showDoctors(ctx: Context) {
       include: { services: { include: { service: true } } },
     });
 
-    if (doctors.length === 0) {
+    if (!doctors.length) {
       await ctx.reply("No doctors available.", backToMainMenu(lang));
       return;
     }
 
     let text = tl.doctorsTitle + "\n\n";
     for (const d of doctors) {
-      const serviceNames = d.services.map((ds) => ds.service.name).join(", ");
-      const daysMap: Record<Language, Record<string, string>> = {
-        uz: { Mon: "Dush", Tue: "Sesh", Wed: "Chor", Thu: "Pay", Fri: "Jum", Sat: "Shan" },
-        ru: { Mon: "Пн", Tue: "Вт", Wed: "Ср", Thu: "Чт", Fri: "Пт", Sat: "Сб" },
-      };
-      const langMap = daysMap[lang] || daysMap.uz;
+      const serviceNames = d.services.map((ds) =>
+        lang === "ru" && ds.service.nameRu ? ds.service.nameRu : ds.service.name
+      ).join(", ");
+      const dayMap = lang === "ru" ? daysRu : daysUz;
       const workingDays = d.workingDays
         .split(",")
-        .map((day) => langMap[day.trim()] || day.trim())
+        .map((day) => dayMap[day.trim()] || day.trim())
         .join(", ");
       const hours = `${d.workingHoursStart} - ${d.workingHoursEnd}`;
 
-      text += tl.doctorEntry(d.name, d.specialty, d.description || "", workingDays, hours) + "\n";
+      text += tl.doctorEntry(docName(d, lang), docSpec(d, lang), docDesc(d, lang), workingDays, hours) + "\n";
       text += `📋 ${tl.doctorServices} ${serviceNames}\n\n`;
     }
 
@@ -48,3 +63,5 @@ export async function showDoctors(ctx: Context) {
     await ctx.reply(t(lang).error, backToMainMenu(lang));
   }
 }
+
+export { docName, docSpec, docDesc };

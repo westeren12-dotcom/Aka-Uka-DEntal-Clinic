@@ -55,24 +55,29 @@ model Patient {
 }
 
 model Doctor {
-  id            String          @id @default(cuid())
-  name          String
-  specialty     String
-  description   String?
-  workingDays   String          @default("Mon,Tue,Wed,Thu,Fri")
+  id              String          @id @default(cuid())
+  name            String
+  nameRu          String?
+  specialty       String
+  specialtyRu     String?
+  description     String?
+  descriptionRu   String?
+  workingDays     String          @default("Mon,Tue,Wed,Thu,Fri")
   workingHoursStart String      @default("09:00")
   workingHoursEnd   String      @default("18:00")
-  isActive      Boolean         @default(true)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  appointments  Appointment[]
-  services      DoctorService[]
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  appointments    Appointment[]
+  services        DoctorService[]
 }
 
 model Service {
   id            String          @id @default(cuid())
   name          String          @unique
+  nameRu        String?
   description   String?
+  descriptionRu String?
   price         Decimal         @db.Decimal(12, 2)
   duration      Int             @default(30)
   isActive      Boolean         @default(true)
@@ -109,6 +114,9 @@ model Appointment {
   payment       Payment?
   reminder24hSent Boolean         @default(false)
   reminder2hSent  Boolean         @default(false)
+  reminder1hSent  Boolean         @default(false)
+  reminder30mSent Boolean         @default(false)
+  reminder10mSent Boolean         @default(false)
 
   @@index([date, doctorId, time])
   @@index([patientId, date])

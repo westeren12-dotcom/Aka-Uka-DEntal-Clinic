@@ -83,6 +83,23 @@ export const ru = {
   faqTitle: "❓ <b>Частые вопросы:</b>",
   askQuestion: "🤖 Напишите ваш вопрос, я отвечу!",
 
+  // Late cancel / no-show
+  lateCancelMessage: (doctor: string, service: string) =>
+    `⚠️ <b>Запись отменена!</b>\n\nВы опоздали на 10 минут.\n\n👨‍⚕️ Врач: ${doctor}\n🦷 Услуга: ${service}\n\nПожалуйста, запишитесь заново.`,
+
+  // Reminders
+  reminder2h: (time: string, doctor: string, service: string) =>
+    `🔔 <b>Напоминание</b>\n\nДо вашего приёма осталось 2 часа.\n🕐 ${time}\n👨‍⚕️ ${doctor}\n🦷 ${service}`,
+  reminder1h: (time: string, doctor: string, service: string) =>
+    `🔔 <b>Напоминание</b>\n\nДо вашего приёма остался 1 час.\n🕐 ${time}\n👨‍⚕️ ${doctor}\n🦷 ${service}`,
+  reminder30m: (time: string, doctor: string, service: string) =>
+    `⏰ <b>Напоминание</b>\n\nДо вашего приёма осталось 30 минут!\n🕐 ${time}\n👨‍⚕️ ${doctor}\n🦷 ${service}`,
+  reminder10m: (time: string, doctor: string, service: string) =>
+    `🚨 <b>Внимание!</b>\n\nДо вашего приёма осталось всего 10 минут!\n🕐 ${time}\n👨‍⚕️ ${doctor}\n🦷 ${service}\n\nПожалуйста, приходите скорее!`,
+  reminderConfirm: "✅ Подтверждаю, приду",
+  reminderCancel: "❌ Отменяю",
+  lateCancelTitle: "⚠️ Запись отменена",
+
   // Errors
   error: "❌ Произошла ошибка. Попробуйте снова.",
   dbError: "❌ База данных не готова. Подождите и попробуйте снова.",

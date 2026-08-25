@@ -1,12 +1,20 @@
 import { Context } from "telegraf";
 import prisma from "../../utils/prisma";
-import { config } from "../../utils/config";
-import { keyboards, backToMainMenu } from "../keyboards";
+import { backToMainMenu } from "../keyboards";
 import { t, Language } from "../languages";
-import { getSession } from "../middlewares/session";
 
 function getLang(ctx: any): Language {
   return ctx.session?.lang || "uz";
+}
+
+function svcName(s: any, lang: Language): string {
+  if (lang === "ru" && s.nameRu) return s.nameRu;
+  return s.name;
+}
+
+function svcDesc(s: any, lang: Language): string {
+  if (lang === "ru" && s.descriptionRu) return s.descriptionRu;
+  return s.description || "";
 }
 
 export async function showServices(ctx: Context) {
@@ -19,7 +27,7 @@ export async function showServices(ctx: Context) {
       orderBy: { name: "asc" },
     });
 
-    if (services.length === 0) {
+    if (!services.length) {
       await ctx.reply("No services available.", backToMainMenu(lang));
       return;
     }
@@ -27,7 +35,7 @@ export async function showServices(ctx: Context) {
     let text = tl.servicesTitle + "\n\n";
     for (const s of services) {
       const price = `💰 ${Number(s.price).toLocaleString()} UZS`;
-      text += tl.serviceEntry(s.name, s.description || "", price, s.duration) + "\n\n";
+      text += tl.serviceEntry(svcName(s, lang), svcDesc(s, lang), price, s.duration) + "\n\n";
     }
 
     await ctx.reply(text, { parse_mode: "HTML", ...backToMainMenu(lang) });
@@ -39,5 +47,7 @@ export async function showServices(ctx: Context) {
 }
 
 export async function showPrices(ctx: Context) {
-  await showServices(ctx); // Same content, prices included
+  await showServices(ctx);
 }
+
+export { svcName, svcDesc };

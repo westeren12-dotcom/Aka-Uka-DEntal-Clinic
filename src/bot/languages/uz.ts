@@ -83,6 +83,23 @@ export const uz = {
   faqTitle: "❓ <b>Ko'p beriladigan savollar:</b>",
   askQuestion: "🤖 Savolingizni yozing, men javob beraman!",
 
+  // Late cancel / no-show
+  lateCancelMessage: (doctor: string, service: string) =>
+    `⚠️ <b>Uchrashuv bekor qilindi!</b>\n\nSiz belgilangan vaqtdan 10 daqiqa kechdingiz.\n\n👨‍⚕️ Shifokor: ${doctor}\n🦷 Xizmat: ${service}\n\nKeyingi uchrashuv uchun qaytadan belgilang.`,
+
+  // Reminders
+  reminder2h: (time: string, doctor: string, service: string) =>
+    `🔔 <b>Eslatma</b>\n\nUchrashingizga 2 soat qoldi.\n🕐 ${time}\n👨‍⚕️ ${doctor}\n🦷 ${service}`,
+  reminder1h: (time: string, doctor: string, service: string) =>
+    `🔔 <b>Eslatma</b>\n\nUchrashingizga 1 soat qoldi.\n🕐 ${time}\n👨‍⚕️ ${doctor}\n🦷 ${service}`,
+  reminder30m: (time: string, doctor: string, service: string) =>
+    `⏰ <b>Eslatma</b>\n\nUchrashingizga 30 daqiqa qoldi!\n🕐 ${time}\n👨‍⚕️ ${doctor}\n🦷 ${service}`,
+  reminder10m: (time: string, doctor: string, service: string) =>
+    `🚨 <b>Ogohlantirish!</b>\n\nUchrashingizga atigi 10 daqiqa qoldi!\n🕐 ${time}\n👨‍⚕️ ${doctor}\n🦷 ${service}\n\nIltimos, tezroq yetib keling!`,
+  reminderConfirm: "✅ Tasdiqlayman, kelaman",
+  reminderCancel: "❌ Bekor qilaman",
+  lateCancelTitle: "⚠️ Uchrashuv bekor qilindi",
+
   // Errors
   error: "❌ Xatolik yuz berdi. Qayta urinib ko'ring.",
   dbError: "❌ Ma'lumotlar bazasi tayyor emas. Biroz kutib qayta urinib ko'ring.",
