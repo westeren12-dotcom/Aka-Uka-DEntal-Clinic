@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npx prisma generate && npx tsc -p tsconfig.json"
+buildCommand = "npm run build"
 
 [deploy]
 startCommand = "node dist/src/index.js"
